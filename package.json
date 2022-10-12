@@ -1,0 +1,25 @@
+{
+  "name": "anilist-auto-torrent",
+  "version": "1.0.0",
+  "description": "Automatically fetch torrents from nyaa.si once you add anime to your AniList",
+  "main": "index.js",
+  "author": "Exhabition",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "anilist-node": "^1.13.0",
+    "chalk": "^4.1.2",
+    "ms": "^2.1.3",
+    "nyaapi": "^2.4.3",
+    "webtorrent": "^1.8.32"
+  },
+  "devDependencies": {
+    "@types/ms": "^0.7.31",
+    "@types/node": "^18.8.4",
+    "@types/webtorrent": "^0.109.3",
+    "typescript": "^4.8.4"
+  }
+}
