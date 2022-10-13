@@ -1,105 +1,132 @@
-import chalk from "chalk";
+import chalk, { Color } from "chalk";
 import readLine from "readline";
 import ms from "ms";
 import { Torrent } from "webtorrent";
 
 import { bytesFormatter } from "../helper/parsing";
 
-const windowSize = process.stdout.getWindowSize();
-const [width] = windowSize;
-const halfWindow = Math.round(width / 2);
-
 // TODO: support terminal size changes
 
-export function initTerminal() {
-    readLine.cursorTo(process.stdout, 0, 0);
-    readLine.clearScreenDown(process.stdout);
+const statsLayout = new Map<string, number>([
+    ["Progress:", 0],
+    ["Size:", 25],
+    ["Speed:", 40],
+    ["Remaining:", 55],
+]);
 
-    readLine.cursorTo(process.stdout, 0, 0);
-    process.stdout.write(chalk.bold.green("📥 Torrents:"));
+const windowsLayout = new Map<string, number>([
+    ["logs", 6],
+    ["errors", 14]
+])
 
-    readLine.cursorTo(process.stdout, halfWindow, 0)
-    process.stdout.write(chalk.bold("Progress:"));
+class Terminal {
+    width: number;
+    height: number;
+    last: {
+        torrents: Torrent[];
+        logs: string[];
+        errors: string[];
+    };
 
-    readLine.cursorTo(process.stdout, halfWindow + 25, 0)
-    process.stdout.write(chalk.bold("Size:"));
+    constructor() {
+        const windowSize = process.stdout.getWindowSize();
+        this.width = windowSize[0];
+        this.height = windowSize[1];
+        this.last = {
+            torrents: [],
+            logs: [],
+            errors: [],
+        }
 
-    readLine.cursorTo(process.stdout, halfWindow + 40, 0)
-    process.stdout.write(chalk.bold("Speed:"));
-
-    readLine.cursorTo(process.stdout, halfWindow + 55, 0)
-    process.stdout.write(chalk.bold("Remaining:"));
-
-    readLine.cursorTo(process.stdout, 0, 6);
-    process.stdout.write(chalk.bold.cyan("📝 Logs:"));
-
-    readLine.cursorTo(process.stdout, 0, 14);
-    process.stdout.write(chalk.bold.yellow("⚠️ Errors:"));
-}
-
-// Log at line 1 - 4
-const lastTorrents: Torrent[] = [];
-export function torrentInfo(torrent: Torrent) {
-    const { name } = torrent;
-    const existingIndex = lastTorrents.indexOf(lastTorrents.find(torrent => torrent.name === name));
-    if (existingIndex !== -1) lastTorrents[existingIndex] = torrent;
-    else {
-        lastTorrents.push(torrent);
-        if (lastTorrents.length > 4) lastTorrents.shift();
+        this.init();
     }
 
-    for (let i = 0; i < 4; i++) {
-        readLine.cursorTo(process.stdout, 0, 1 + i)
-        readLine.clearLine(process.stdout, 0);
+    init() {
+        readLine.cursorTo(process.stdout, 0, 0);
+        readLine.clearScreenDown(process.stdout);
 
-        const currentInfo = lastTorrents[i];
-        if (currentInfo) {
-            const terminalFriendlyName = currentInfo.name.length > halfWindow - 5 ? currentInfo.name.slice(0, halfWindow - 7) + "..." : currentInfo.name;
-            const timeRemaining = currentInfo.timeRemaining < 1 || !isFinite(currentInfo.timeRemaining) ?
-                chalk.green("Done!") : ms(currentInfo.timeRemaining);
+        readLine.cursorTo(process.stdout, 0, 0);
+        process.stdout.write(chalk.bold.green("📥 Torrents:"));
 
-            process.stdout.write(terminalFriendlyName)
-            readLine.cursorTo(process.stdout, halfWindow, 1 + i);
-            process.stdout.write(`[${chalk.green("\u2591").repeat(Math.floor(currentInfo.progress * 10))
-                + "\u2591".repeat(10 - Math.floor(currentInfo.progress * 10))}] (${(currentInfo.progress * 100).toFixed(2)}%)`);
-            readLine.cursorTo(process.stdout, halfWindow + 25, 1 + i);
-            process.stdout.write(bytesFormatter(currentInfo.length));
-            readLine.cursorTo(process.stdout, halfWindow + 40, 1 + i);
-            process.stdout.write(bytesFormatter(currentInfo.downloadSpeed));
-            readLine.cursorTo(process.stdout, halfWindow + 55, 1 + i);
-            process.stdout.write(timeRemaining);
+        for (const [title, postion] of statsLayout) {
+            readLine.cursorTo(process.stdout, this.halfWidth + postion, 0)
+            process.stdout.write(chalk.bold(title));
+        }
+
+        readLine.cursorTo(process.stdout, 0, windowsLayout.get("logs"));
+        process.stdout.write(chalk.bold.cyan("📝 Logs:"));
+
+        readLine.cursorTo(process.stdout, 0, windowsLayout.get("errors"));
+        process.stdout.write(chalk.bold.yellow("⚠️ Errors:"));
+    }
+
+    get halfWidth(): number {
+        return Math.round(this.width / 2)
+    }
+
+    log = (message: string | number) => {
+        this.baseLog(message, "logs", "blue");
+    }
+
+    error = (message: string | number | Error) => {
+        this.baseLog(message, "errors", "red");
+    }
+
+    baseLog = (message: string | number | Error, key: "logs" | "errors", color: typeof Color) => {
+        if (typeof message !== "string") message = message.toString();
+
+        const terminalFriendlyMsg = message.length > this.width - 5 ? message.slice(0, this.width - 7) + "..." : message;
+        this.last[key].push(terminalFriendlyMsg);
+        if (this.last[key].length > 6) this.last[key].shift();
+
+        const windowY = windowsLayout.get(key);
+        for (let i = 0; i < 6; i++) {
+            readLine.cursorTo(process.stdout, 0, windowY + 1 + i)
+            readLine.clearLine(process.stdout, 0);
+
+            if (this.last[key][i]) process.stdout.write(chalk[color](this.last[key][i]));
+        }
+    }
+
+    torrentInfo(torrent: Torrent) {
+        const { name } = torrent;
+        const existingIndex = this.last.torrents.indexOf(this.last.torrents.find(torrent => torrent.name === name));
+        if (existingIndex !== -1) this.last.torrents[existingIndex] = torrent;
+        else {
+            this.last.torrents.push(torrent);
+            if (this.last.torrents.length > 4) this.last.torrents.shift();
+        }
+
+        for (let i = 0; i < 4; i++) {
+            readLine.cursorTo(process.stdout, 0, 1 + i)
+            readLine.clearLine(process.stdout, 0);
+
+            const currentInfo = this.last.torrents[i];
+            if (currentInfo) {
+                const terminalFriendlyName = currentInfo.name.length > this.halfWidth - 5 ?
+                    currentInfo.name.slice(0, this.halfWidth - 7) + "..." : currentInfo.name;
+                const timeRemaining = currentInfo.timeRemaining < 1 || !isFinite(currentInfo.timeRemaining) ?
+                    chalk.green("Done!") : ms(currentInfo.timeRemaining);
+
+                process.stdout.write(terminalFriendlyName)
+
+                readLine.cursorTo(process.stdout, this.halfWidth + statsLayout.get("Progress:"), 1 + i);
+                process.stdout.write(`[${chalk.green("\u2591").repeat(Math.floor(currentInfo.progress * 10))
+                    + "\u2591".repeat(10 - Math.floor(currentInfo.progress * 10))}] (${(currentInfo.progress * 100).toFixed(2)}%)`);
+
+                readLine.cursorTo(process.stdout, this.halfWidth + statsLayout.get("Size:"), 1 + i);
+                process.stdout.write(bytesFormatter(currentInfo.length));
+
+                readLine.cursorTo(process.stdout, this.halfWidth + statsLayout.get("Speed:"), 1 + i);
+                process.stdout.write(bytesFormatter(currentInfo.downloadSpeed));
+
+                readLine.cursorTo(process.stdout, this.halfWidth + statsLayout.get("Remaining:"), 1 + i);
+                process.stdout.write(timeRemaining);
+            }
         }
     }
 }
 
-// Log at line 9 - 15
-const lastLogs: string[] = [];
-export function log(message: string) {
-    const terminalFriendlyMsg = message.length > width - 5 ? message.slice(0, width - 7) + "..." : message;
-    lastLogs.push(terminalFriendlyMsg);
-    if (lastLogs.length > 6) lastLogs.shift();
+const terminal = new Terminal();
 
-    for (let i = 0; i < 6; i++) {
-        readLine.cursorTo(process.stdout, 0, 7 + i)
-        readLine.clearLine(process.stdout, 0);
-
-        if (lastLogs[i]) process.stdout.write(chalk.blue(lastLogs[i]));
-    }
-}
-
-// Error at line 17 - 23
-const lastErrors: string[] = [];
-export function error(message: string | Error) {
-    if (typeof message !== "string") message = message.toString()
-
-    const terminalFriendlyMsg = message.length > 125 ? message.slice(0, 122) + "..." : message;
-    lastErrors.push(terminalFriendlyMsg);
-    if (lastErrors.length > 6) lastErrors.shift();
-
-    for (let i = 0; i < 6; i++) {
-        readLine.cursorTo(process.stdout, 0, 15 + i)
-        readLine.clearLine(process.stdout, 0);
-
-        if (lastErrors[i]) process.stdout.write(chalk.red(lastErrors[i]));
-    }
-}
+export default terminal;

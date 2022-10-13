@@ -1,7 +1,7 @@
 import { si } from "nyaapi";
 
 import { generateSeasonString } from "../helper/parsing";
-import { log } from "../helper/terminal";
+import terminal from "../helper/terminal";
 
 import { uploaders, fallbackToAllUploaders } from "../config.json";
 
@@ -12,7 +12,7 @@ export async function searchTorrents(term: string, season?: number, episode?: nu
 
     // If there are preferred uploaders set, search by uploaders
     for (const uploader of uploaders) {
-        log(`Searching ${uploader} for ${term}`);
+        terminal.log(`Searching ${uploader} for ${term}`);
         const results = await si.searchByUser(uploader, term, 1, {
             category: "1_2",
         });
@@ -23,7 +23,7 @@ export async function searchTorrents(term: string, season?: number, episode?: nu
     }
 
     if (fallbackToAllUploaders) {
-        log(`Searching all uploaders for ${term}`);
+        terminal.log(`Searching all uploaders for ${term}`);
         const results = await si.search(term, 1, {
             category: "1_2",
         });

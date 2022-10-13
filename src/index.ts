@@ -5,11 +5,9 @@ import { getAnimeFromUser } from "./fetching/anilist";
 
 import { isInPast } from "./helper/date";
 import { getSeasonFromTitle } from "./helper/parsing";
-import { initTerminal, log, error } from "./helper/terminal";
+import terminal from "./helper/terminal";
 
-import TorrentClient, { addTorrent } from "./torrent/torrentClient"
-
-initTerminal();
+import { addTorrent } from "./torrent/torrentClient"
 
 (async () => {
     const savedTorrents = [];
@@ -19,7 +17,7 @@ initTerminal();
     for (const plannedAnime of planningList) {
         const title = plannedAnime.media.title.english;
         if (!title) {
-            log(`Skipping ${plannedAnime.media.id} because it has no english title`);
+            terminal.log(`Skipping ${plannedAnime.media.id} because it has no english title`);
             continue
         }
 
@@ -27,13 +25,13 @@ initTerminal();
         const { cleanTitle, season } = getSeasonFromTitle(title);
         const episode = isFullyReleased ? null : 1 // TODO get latest ep
 
-        const result = await searchTorrents(cleanTitle, season, episode).catch(error);
+        const result = await searchTorrents(cleanTitle, season, episode).catch(terminal.error);
         if (!result) {
             entriesFailed.push(cleanTitle)
             continue;
         }
 
-        log(`[${chalk.green("+")}] Adding ${result.name}`);
+        terminal.log(`[${chalk.green("+")}] Adding ${result.name}`);
         const torrent = addTorrent(result.magnet);
         savedTorrents.push(torrent)
     }

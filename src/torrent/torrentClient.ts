@@ -1,6 +1,6 @@
 import WebTorrent from "webtorrent";
 
-import { log, torrentInfo, error } from "../helper/terminal";
+import terminal from "../helper/terminal";
 
 import { savePath } from "../config.json"
 
@@ -9,11 +9,11 @@ const client = new WebTorrent();
 const MAX_TORRENTS = 4;
 
 client.on("error", (err) => {
-    error(err);
+    terminal.error(err);
 })
 
 client.on('torrent', torrent => {
-    log(torrent.name);
+    terminal.log(torrent.name);
 });
 
 export function addTorrent(magnetUrl: string) {
@@ -30,7 +30,7 @@ setInterval(() => {
     if (ongoingTorrents.length < 1) return;
 
     for (const torrent of ongoingTorrents) {
-        torrentInfo(torrent);
+        terminal.torrentInfo(torrent);
     }
 }, 1000)
 
