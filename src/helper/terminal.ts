@@ -1,9 +1,14 @@
 import chalk, { Color } from "chalk";
 import readLine from "readline";
 import ms from "ms";
+import os from "os";
+import checkDiskSpace from 'check-disk-space'
 import { Torrent } from "webtorrent";
 
 import { bytesFormatter } from "../helper/parsing";
+import { loadingBar } from "../helper/styling"
+
+import { savePath } from "../config.json"
 
 // TODO: support terminal size changes
 
@@ -27,6 +32,7 @@ class Terminal {
         logs: string[];
         errors: string[];
     };
+    timer: NodeJS.Timer | null;
 
     constructor() {
         const windowSize = process.stdout.getWindowSize();
@@ -46,7 +52,7 @@ class Terminal {
         readLine.clearScreenDown(process.stdout);
 
         readLine.cursorTo(process.stdout, 0, 0);
-        process.stdout.write(chalk.bold.green("📥 Torrents:"));
+        process.stdout.write(chalk.bold.green("📥 Torrents "));
 
         for (const [title, postion] of statsLayout) {
             readLine.cursorTo(process.stdout, this.halfWidth + postion, 0)
@@ -55,6 +61,9 @@ class Terminal {
 
         readLine.cursorTo(process.stdout, 0, windowsLayout.get("logs"));
         process.stdout.write(chalk.bold.cyan("📝 Logs:"));
+
+        readLine.cursorTo(process.stdout, this.halfWidth, windowsLayout.get("logs"));
+        process.stdout.write(chalk.bold.magenta("🖥️ System:"));
 
         readLine.cursorTo(process.stdout, 0, windowsLayout.get("errors"));
         process.stdout.write(chalk.bold.yellow("⚠️ Errors:"));
@@ -75,14 +84,15 @@ class Terminal {
     baseLog = (message: string | number | Error, key: "logs" | "errors", color: typeof Color) => {
         if (typeof message !== "string") message = message.toString();
 
-        const terminalFriendlyMsg = message.length > this.width - 5 ? message.slice(0, this.width - 7) + "..." : message;
+        const terminalFriendlyMsg = message.length > this.halfWidth - 5 ? message.slice(0, this.halfWidth - 7) + "..." : message;
         this.last[key].push(terminalFriendlyMsg);
         if (this.last[key].length > 6) this.last[key].shift();
 
         const windowY = windowsLayout.get(key);
         for (let i = 0; i < 6; i++) {
-            readLine.cursorTo(process.stdout, 0, windowY + 1 + i)
-            readLine.clearLine(process.stdout, 0);
+            readLine.cursorTo(process.stdout, this.halfWidth - 1, windowY + 1 + i)
+            readLine.clearLine(process.stdout, -1);
+            readLine.cursorTo(process.stdout, 0, windowY + 1 + i);
 
             if (this.last[key][i]) process.stdout.write(chalk[color](this.last[key][i]));
         }
@@ -105,14 +115,14 @@ class Terminal {
             if (currentInfo) {
                 const terminalFriendlyName = currentInfo.name.length > this.halfWidth - 5 ?
                     currentInfo.name.slice(0, this.halfWidth - 7) + "..." : currentInfo.name;
-                const timeRemaining = currentInfo.timeRemaining < 1 || !isFinite(currentInfo.timeRemaining) ?
-                    chalk.green("Done!") : ms(currentInfo.timeRemaining);
+                const timeRemaining = currentInfo.done ? chalk.green("Done!") :
+                    currentInfo.timeRemaining < 1 || !isFinite(currentInfo.timeRemaining) ?
+                        chalk.red("Failing.") : ms(currentInfo.timeRemaining);
 
                 process.stdout.write(terminalFriendlyName)
 
                 readLine.cursorTo(process.stdout, this.halfWidth + statsLayout.get("Progress:"), 1 + i);
-                process.stdout.write(`[${chalk.green("\u2591").repeat(Math.floor(currentInfo.progress * 10))
-                    + "\u2591".repeat(10 - Math.floor(currentInfo.progress * 10))}] (${(currentInfo.progress * 100).toFixed(2)}%)`);
+                process.stdout.write(`${loadingBar(currentInfo.progress)}`);
 
                 readLine.cursorTo(process.stdout, this.halfWidth + statsLayout.get("Size:"), 1 + i);
                 process.stdout.write(bytesFormatter(currentInfo.length));
@@ -124,6 +134,44 @@ class Terminal {
                 process.stdout.write(timeRemaining);
             }
         }
+    }
+
+    clientInfo = (stats: { active: number, pending: number, done: number, total: number }) => {
+        const { active, pending, done, total } = stats;
+
+        readLine.cursorTo(process.stdout, 0, 0);
+        process.stdout.write(chalk.bold.green("📥 Torrents ") +
+            `(${active} ${chalk.green("active")}, ` +
+            `${pending} ${chalk.hex('#FFA500')("pending")}, ` +
+            `${done} ${chalk.hex('#FFA500')("done")}, ` +
+            `${total} ${chalk.blue("total")})`);
+    }
+
+    processUsage = async () => {
+        const cpuStats = os.cpus().map(cpu => {
+            const value = cpu.times;
+            const total = value.user + value.nice + value.sys + value.idle + value.irq;
+
+            return ((total - value.idle) / total) * 100
+        })
+        const cpuUsage = cpuStats.reduce((previousValue, currentValue) => previousValue + currentValue);
+
+        readLine.cursorTo(process.stdout, this.halfWidth, windowsLayout.get("logs") + 1);
+        readLine.clearLine(process.stdout, 1);
+        process.stdout.write(`${os.cpus()[0].model.trimEnd()} - ${cpuUsage.toFixed(2)}% CPU`)
+
+        const memoryFreePercentage = os.freemem() / os.totalmem();
+        const usedPercentage = 1 - memoryFreePercentage;
+
+        readLine.cursorTo(process.stdout, this.halfWidth, windowsLayout.get("logs") + 3);
+        process.stdout.write(`RAM: ${bytesFormatter(os.totalmem() - os.freemem())}/${bytesFormatter(os.totalmem())} Memory ` +
+            `${loadingBar(usedPercentage, "blue")}`);
+
+        const diskInfo = await checkDiskSpace(savePath);
+
+        readLine.cursorTo(process.stdout, this.halfWidth, windowsLayout.get("logs") + 4);
+        process.stdout.write(`Disk: ${bytesFormatter(diskInfo.size - diskInfo.free)}/${bytesFormatter(diskInfo.size)} ` +
+            `${loadingBar(1 - diskInfo.free / diskInfo.size, "red")}`);
     }
 }
 
