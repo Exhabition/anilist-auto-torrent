@@ -14,6 +14,8 @@ import { addTorrent } from "./torrent/torrentClient"
     const entriesFailed = [];
 
     const planningList = await getAnimeFromUser();
+    if (!planningList) process.exit(1);
+
     for (const plannedAnime of planningList) {
         const title = plannedAnime.media.title.english;
         if (!title) {

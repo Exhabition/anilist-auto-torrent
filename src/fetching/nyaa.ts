@@ -6,9 +6,7 @@ import terminal from "../helper/terminal";
 import { uploaders, fallbackToAllUploaders } from "../config.json";
 
 export async function searchTorrents(term: string, season?: number, episode?: number) {
-    if (season) {
-        term = `${term} ${generateSeasonString(season, episode)}`
-    }
+    if (season) term = `${term} ${generateSeasonString(season, episode)}`
 
     // If there are preferred uploaders set, search by uploaders
     for (const uploader of uploaders) {
