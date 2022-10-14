@@ -165,12 +165,14 @@ class Terminal {
         const usedPercentage = 1 - memoryFreePercentage;
 
         readLine.cursorTo(process.stdout, this.halfWidth, windowsLayout.get("logs") + 3);
+        readLine.clearLine(process.stdout, 1);
         process.stdout.write(`RAM: ${bytesFormatter(os.totalmem() - os.freemem())}/${bytesFormatter(os.totalmem())} Memory ` +
             `${loadingBar(usedPercentage, "blue")}`);
 
         const diskInfo = await checkDiskSpace(savePath);
 
         readLine.cursorTo(process.stdout, this.halfWidth, windowsLayout.get("logs") + 4);
+        readLine.clearLine(process.stdout, 1);
         process.stdout.write(`Disk: ${bytesFormatter(diskInfo.size - diskInfo.free)}/${bytesFormatter(diskInfo.size)} ` +
             `${loadingBar(1 - diskInfo.free / diskInfo.size, "red")}`);
     }
