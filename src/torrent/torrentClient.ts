@@ -1,4 +1,5 @@
 import WebTorrent from "webtorrent";
+import chalk from "chalk";
 
 import terminal from "../helper/terminal";
 
@@ -6,6 +7,9 @@ import config from "../config/config"
 const { savePath, maxActiveTorrents } = config;
 
 const client = new WebTorrent();
+
+const pending = new Set<string>();
+const failing = new Set<string>();
 
 client.on("error", (err) => {
     terminal.error(err);
@@ -16,12 +20,20 @@ client.on('torrent', torrent => {
 });
 
 export function addTorrent(magnetUrl: string) {
-    const torrent = client.add(magnetUrl, {
-        path: savePath,
-    })
+    const activeTorrents = client.torrents.filter(torrent => !torrent.paused && !torrent.done);
+    if (activeTorrents.length < maxActiveTorrents) {
+        const torrent = client.add(magnetUrl, {
+            path: savePath,
+        });
 
-    const activeTorrents = client.torrents.filter(torrent => !torrent.paused);
-    if (activeTorrents.length > maxActiveTorrents) torrent.pause();
+        torrent.once("done", () => {
+            terminal.log(chalk.green(`${torrent.name} is done`));
+
+            addTorrent(pending.values().next().value);
+        });
+    } else {
+        pending.add(magnetUrl);
+    }
 }
 
 terminal.timer = setInterval(() => {
@@ -30,20 +42,13 @@ terminal.timer = setInterval(() => {
     const ongoingTorrents = client.torrents.filter(torrent => !torrent.paused && !torrent.done);
     if (ongoingTorrents.length < 1) return;
 
-    // Some torrents finished, let's start new ones
-    const inactiveTorrents = client.torrents.filter(torrent => torrent.paused && !torrent.done);
-    if (ongoingTorrents.length < maxActiveTorrents && inactiveTorrents.length > 0) {
-        terminal.log(`Resuming ${inactiveTorrents[0].length}`);
-        inactiveTorrents[0].resume();
-    }
-
     for (const torrent of ongoingTorrents) {
         terminal.torrentInfo(torrent);
     }
 
     terminal.clientInfo({
         active: client.torrents.filter(torrent => !torrent.paused && !torrent.done).length,
-        pending: client.torrents.filter(torrent => torrent.paused && !torrent.done).length,
+        pending: pending.size,
         done: client.torrents.filter(torrent => torrent.done).length,
         total: client.torrents.length,
     });
