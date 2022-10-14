@@ -2,11 +2,9 @@ import WebTorrent from "webtorrent";
 
 import terminal from "../helper/terminal";
 
-import { savePath } from "../config.json"
+import { savePath, maxActiveTorrents } from "../config.json"
 
 const client = new WebTorrent();
-
-const MAX_TORRENTS = 4;
 
 client.on("error", (err) => {
     terminal.error(err);
@@ -22,16 +20,32 @@ export function addTorrent(magnetUrl: string) {
     })
 
     const activeTorrents = client.torrents.filter(torrent => !torrent.paused);
-    if (activeTorrents.length > MAX_TORRENTS) torrent.pause();
+    if (activeTorrents.length > maxActiveTorrents) torrent.pause();
 }
 
-setInterval(() => {
-    const ongoingTorrents = client.torrents.filter(torrent => !torrent.paused);
+terminal.timer = setInterval(() => {
+    terminal.processUsage();
+
+    const ongoingTorrents = client.torrents.filter(torrent => !torrent.paused && !torrent.done);
     if (ongoingTorrents.length < 1) return;
+
+    // Some torrents finished, let's start new ones
+    const inactiveTorrents = client.torrents.filter(torrent => torrent.paused && !torrent.done);
+    if (ongoingTorrents.length < maxActiveTorrents && inactiveTorrents.length > 0) {
+        terminal.log(`Resuming ${inactiveTorrents[0].length}`);
+        inactiveTorrents[0].resume();
+    }
 
     for (const torrent of ongoingTorrents) {
         terminal.torrentInfo(torrent);
     }
+
+    terminal.clientInfo({
+        active: client.torrents.filter(torrent => !torrent.paused && !torrent.done).length,
+        pending: client.torrents.filter(torrent => torrent.paused && !torrent.done).length,
+        done: client.torrents.filter(torrent => torrent.done).length,
+        total: client.torrents.length,
+    });
 }, 1000)
 
 export default client;
