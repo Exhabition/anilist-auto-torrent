@@ -1,4 +1,9 @@
+import * as dotenv from "dotenv"
+dotenv.config();
+
 import chalk from "chalk";
+
+import config from "./config/config";
 
 import { searchTorrents } from "./fetching/nyaa";
 import { getAnimeFromUser } from "./fetching/anilist";
@@ -10,6 +15,10 @@ import terminal from "./helper/terminal";
 import { addTorrent } from "./torrent/torrentClient"
 
 (async () => {
+    for (const [key, value] of Object.entries(config)) {
+        terminal.log(`[${key}] ${value}`);
+    }
+
     const savedTorrents = [];
     const entriesFailed = [];
 

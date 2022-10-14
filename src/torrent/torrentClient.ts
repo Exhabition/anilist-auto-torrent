@@ -2,7 +2,8 @@ import WebTorrent from "webtorrent";
 
 import terminal from "../helper/terminal";
 
-import { savePath, maxActiveTorrents } from "../config.json"
+import config from "../config/config"
+const { savePath, maxActiveTorrents } = config;
 
 const client = new WebTorrent();
 

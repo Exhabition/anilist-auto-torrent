@@ -3,7 +3,8 @@ import { si } from "nyaapi";
 import { generateSeasonString } from "../helper/parsing";
 import terminal from "../helper/terminal";
 
-import { uploaders, fallbackToAllUploaders } from "../config.json";
+import config from "../config/config";
+const { uploaders, fallbackToAllUploaders} = config;
 
 export async function searchTorrents(term: string, season?: number, episode?: number) {
     if (season) term = `${term} ${generateSeasonString(season, episode)}`

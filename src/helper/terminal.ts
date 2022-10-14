@@ -8,7 +8,8 @@ import { Torrent } from "webtorrent";
 import { bytesFormatter } from "../helper/parsing";
 import { loadingBar } from "../helper/styling"
 
-import { savePath } from "../config.json"
+import config from "../config/config";
+const { savePath } = config;
 
 // TODO: support terminal size changes
 

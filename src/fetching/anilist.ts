@@ -2,7 +2,8 @@ import AniList from "anilist-node";
 
 import terminal from "../helper/terminal"
 
-import { userId } from "../config.json"
+import config from "../config/config";
+const { userId } = config;
 
 const Client = new AniList();
 

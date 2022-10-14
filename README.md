@@ -16,11 +16,10 @@ Automatically fetch torrents from nyaa.si once you add anime to your AniList
 ```
 
 ### Method 2: .env
-to be supported
 ```env
 UPLOADERS=Ember_Encodes,Judas
 FALLBACK_TO_ALL_UPLOADERS=true
-USERID=862658
+USER_ID=862658
 SAVE_PATH=path/to/something
 MAX_ACTIVE_TORRENTS=4
 ```
