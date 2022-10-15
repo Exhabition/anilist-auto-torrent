@@ -1,4 +1,4 @@
-import * as importedConfig from "../../config.json";
+import * as importedConfig from "../config.json";
 const anyImportedConfig: any = importedConfig
 
 interface Config {
@@ -31,7 +31,7 @@ function generateConfig(): Config | Error {
     if (typeof currentVariable === "string")
         currentVariable = currentVariable.split(",");
 
-    currentVariable = currentVariable.map((value: string) => {
+    if (Array.isArray(currentVariable)) currentVariable = currentVariable.map((value: string) => {
         return typeof value === "string" ? parseInt(value) : value;
     });
     
