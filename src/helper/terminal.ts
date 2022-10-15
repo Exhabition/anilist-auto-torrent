@@ -36,7 +36,7 @@ class Terminal {
     timer: NodeJS.Timer | null;
 
     constructor() {
-        const windowSize = process.stdout.getWindowSize();
+        const windowSize = typeof process.stdout.getWindowSize == "function" ? process.stdout.getWindowSize() : [50, 25];
         this.width = windowSize[0];
         this.height = windowSize[1];
         this.last = {
