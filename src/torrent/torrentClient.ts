@@ -8,7 +8,10 @@ const { savePath, maxActiveTorrents } = config;
 
 const client = new WebTorrent();
 
-const pending = new Set<string>();
+const pending = new Set<{
+    magnet: string,
+    subPath: "Movies" | "Series",
+}>();
 const failing = new Set<string>();
 
 client.on("error", (err) => {
@@ -19,20 +22,21 @@ client.on('torrent', torrent => {
     terminal.log(torrent.name);
 });
 
-export function addTorrent(magnetUrl: string) {
+export function addTorrent(magnetUrl: string, subPath: "Movies" | "Series") {
     const activeTorrents = client.torrents.filter(torrent => !torrent.paused && !torrent.done);
     if (activeTorrents.length < maxActiveTorrents) {
         const torrent = client.add(magnetUrl, {
-            path: savePath,
+            path: `${savePath}/${subPath}`,
         });
 
         torrent.once("done", () => {
             terminal.log(chalk.green(`${torrent.name} is done`));
 
-            addTorrent(pending.values().next().value);
+            const toAddTorrent = pending.values().next().value;
+            addTorrent(toAddTorrent.magnet, toAddTorrent.subPath);
         });
     } else {
-        pending.add(magnetUrl);
+        pending.add({ magnet: magnetUrl, subPath });
     }
 }
 

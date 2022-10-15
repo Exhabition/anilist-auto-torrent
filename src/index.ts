@@ -43,7 +43,8 @@ import { addTorrent } from "./torrent/torrentClient"
         }
 
         terminal.log(`[${chalk.green("+")}] Adding ${result.name}`);
-        const torrent = addTorrent(result.magnet);
+        const subPath = plannedAnime.media.format === "TV" || plannedAnime.media.format === "TV" ? "Series" : "Movies";
+        const torrent = addTorrent(result.magnet, subPath);
         savedTorrents.push(torrent)
     }
 })()
