@@ -9,7 +9,7 @@ Automatically fetch torrents from nyaa.si once you add anime to your AniList
 {
     "uploaders": ["Ember_Encodes", "Judas"], // uploaders on nyaa.si to check first
     "fallbackToAllUploaders": true,          // if torrent isn't found by uploaders, find torrent by any uploader or not?
-    "userId": 862658,                        // your AniList ID
+    "userIds": [862658, 665366],                        // a single userId, or multiple
     "savePath": "path/to/something", 
     "maxActiveTorrents": 4                   // default is 4, lower or higher depending on your resources 
 }
@@ -19,7 +19,7 @@ Automatically fetch torrents from nyaa.si once you add anime to your AniList
 ```env
 UPLOADERS=Ember_Encodes,Judas
 FALLBACK_TO_ALL_UPLOADERS=true
-USER_ID=862658
+USER_IDS=862658,665366
 SAVE_PATH=path/to/something
 MAX_ACTIVE_TORRENTS=4
 ```

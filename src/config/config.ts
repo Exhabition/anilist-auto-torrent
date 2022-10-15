@@ -3,7 +3,7 @@ const anyImportedConfig: any = importedConfig
 
 interface Config {
     uploaders?: string[];
-    userId: number;
+    userIds: number[];
     fallbackToAllUploaders?: boolean;
     savePath: string;
     maxActiveTorrents?: number;
@@ -14,7 +14,7 @@ function generateConfig(): Config | Error {
         uploaders: [] as string[],
         fallbackToAllUploaders: false,
         maxActiveTorrents: 4,
-        userId: 0,
+        userIds: [] as number[],
         savePath: "",
     };
 
@@ -27,15 +27,17 @@ function generateConfig(): Config | Error {
     if (Array.isArray(currentVariable))
         config.uploaders = currentVariable;
 
-    currentVariable = getConfigKey("userId");
-    if (typeof currentVariable !== "number" && typeof currentVariable !== "string")
-        throw new Error(`userId isn't a number: ${typeof currentVariable}`);
+    currentVariable = getConfigKey("userIds");
+    if (typeof currentVariable === "string")
+        currentVariable = currentVariable.split(",");
 
-    if (typeof currentVariable !== "number")
-        currentVariable = parseInt(currentVariable);
-    if (isNaN(currentVariable))
-        throw new Error(`userId isn't a number: ${typeof currentVariable}`);
-    config.userId = currentVariable;
+    currentVariable = currentVariable.map((value: string) => {
+        return typeof value === "string" ? parseInt(value) : value;
+    });
+    
+    if (!Array.isArray(currentVariable))
+        throw new Error(`userIds isn't an array: ${typeof currentVariable}`);
+    config.userIds = currentVariable;
 
     currentVariable = getConfigKey("fallbackToAllUploaders") ?? config.fallbackToAllUploaders;
     currentVariable = currentVariable ? true : false;
